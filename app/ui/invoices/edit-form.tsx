@@ -1,5 +1,5 @@
 'use client';
-
+import { updateInvoice } from '@/app/lib/actions';
 import { CustomerField, InvoiceForm } from '@/app/lib/definitions';
 import {
   CheckIcon,
@@ -17,7 +17,8 @@ export default function EditInvoiceForm({
   invoice: InvoiceForm;
   customers: CustomerField[];
 }) {
-  return (
+  const updateInvoiceWithId = updateInvoice.bind(null, invoice.id);
+  return <form action={updateInvoiceWithId}>{/* ... */}</form>;(
     <form>
       <div className="rounded-md bg-gray-50 p-4 md:p-6">
         {/* Customer Name */}

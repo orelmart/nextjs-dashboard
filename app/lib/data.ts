@@ -144,28 +144,31 @@ export async function fetchInvoicesPages(query: string) {
 
 export async function fetchInvoiceById(id: string) {
   try {
-    const data = await sql<InvoiceForm[]>`
+    const rows = await sql<InvoiceForm[]>`
       SELECT
-        invoices.id,
-        invoices.customer_id,
-        invoices.amount,
-        invoices.status
+        id,
+        customer_id,
+        amount,
+        status
       FROM invoices
-      WHERE invoices.id = ${id};
+      WHERE id = ${id};
     `;
 
-    const invoice = data.map((invoice) => ({
-      ...invoice,
-      // Convert amount from cents to dollars
-      amount: invoice.amount / 100,
-    }));
+    // rows[0] will be undefined if the query returns 0 rows
+    const invoice = rows[0];
+    if (!invoice) return undefined;
 
-    return invoice[0];
+    // Convert amount from cents → dollars before returning
+    return {
+      ...invoice,
+      amount: invoice.amount / 100,
+    };
   } catch (error) {
     console.error('Database Error:', error);
     throw new Error('Failed to fetch invoice.');
   }
 }
+
 
 export async function fetchCustomers() {
   try {
