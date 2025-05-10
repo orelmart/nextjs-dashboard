@@ -1,116 +1,182 @@
-'use client'
-import { CustomerField } from '@/app/lib/definitions';
-import { useActionState } from 'react';
+'use client';
+
+import { useActionState } from 'react';            // ⬅️ from 'react'
+import { useFormStatus } from 'react-dom';         // status hook still in react-dom
+import clsx from 'clsx';
 import Link from 'next/link';
-import {
-  CheckIcon,
-  ClockIcon,
-  CurrencyDollarIcon,
-  UserCircleIcon,
-} from '@heroicons/react/24/outline';
-import { Button } from '@/app/ui/button';
+
 import { createInvoice } from '@/app/lib/actions';
+import { CustomerField } from '@/app/lib/definitions';
+import { Button } from '@/app/ui/button';
 
-export default function Form({ customers }: { customers: CustomerField[] }) {
+/* ---------------------------------------------------------------------------
+   Client-side state returned by createInvoice
+   --------------------------------------------------------------------------- */
+type State = {
+  errors?: {
+    customerId?: string[];
+    amount?: string[];
+    status?: string[];
+  };
+  message?: string | null;
+};
+
+const initialState: State = { errors: {}, message: null };
+
+/* ---------------------------------------------------------------------------
+   Submit button (announces pending state to assistive tech)
+   --------------------------------------------------------------------------- */
+function SubmitButton() {
+  const { pending } = useFormStatus();
+
   return (
-    <form action={createInvoice}>
-      <div className="rounded-md bg-gray-50 p-4 md:p-6">
-        {/* Customer Name */}
-        <div className="mb-4">
-          <label htmlFor="customer" className="mb-2 block text-sm font-medium">
-            Choose customer
-          </label>
-          <div className="relative">
-            <select
-              id="customer"
-              name="customerId"
-              className="peer block w-full cursor-pointer rounded-md border border-gray-200 py-2 pl-10 text-sm outline-2 placeholder:text-gray-500"
-              defaultValue=""
-            >
-              <option value="" disabled>
-                Select a customer
-              </option>
-              {customers.map((customer) => (
-                <option key={customer.id} value={customer.id}>
-                  {customer.name}
-                </option>
-              ))}
-            </select>
-            <UserCircleIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500" />
-          </div>
-        </div>
+      <Button type="submit" aria-disabled={pending} className="w-full md:w-auto">
+        {pending ? 'Creating…' : 'Create Invoice'}
+      </Button>
+  );
+}
 
-        {/* Invoice Amount */}
-        <div className="mb-4">
-          <label htmlFor="amount" className="mb-2 block text-sm font-medium">
-            Choose an amount
+/* ---------------------------------------------------------------------------
+   Create-invoice form
+   --------------------------------------------------------------------------- */
+export default function CreateInvoiceForm({
+                                            customers,
+                                          }: {
+  customers: CustomerField[];
+}) {
+  const [state, dispatch] = useActionState(createInvoice, initialState);
+
+  return (
+      <form action={dispatch} className="space-y-8">
+        {/* ----------------------------- Amount ----------------------------- */}
+        <div>
+          <label
+              htmlFor="amount"
+              className="block text-sm font-medium leading-6 text-gray-900"
+          >
+            Amount
           </label>
-          <div className="relative mt-2 rounded-md">
-            <div className="relative">
-              <input
+          <div className="relative mt-2 rounded-md shadow-sm">
+            <input
                 id="amount"
                 name="amount"
                 type="number"
                 step="0.01"
-                placeholder="Enter USD amount"
-                className="peer block w-full rounded-md border border-gray-200 py-2 pl-10 text-sm outline-2 placeholder:text-gray-500"
-              />
-              <CurrencyDollarIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
-            </div>
+                min="0"
+                defaultValue="0.00"
+                aria-describedby="amount-error"
+                className={clsx(
+                    'block w-full rounded-md border-0 py-1.5 ring-1 ring-inset ring-gray-300',
+                    state.errors?.amount && 'ring-red-500',
+                )}
+            />
           </div>
+          {state.errors?.amount?.[0] && (
+              <p
+                  id="amount-error"
+                  role="alert"
+                  aria-live="polite"
+                  className="mt-2 text-sm text-red-600"
+              >
+                {state.errors.amount[0]}
+              </p>
+          )}
         </div>
 
-        {/* Invoice Status */}
-        <fieldset>
-          <legend className="mb-2 block text-sm font-medium">
-            Set the invoice status
-          </legend>
-          <div className="rounded-md border border-gray-200 bg-white px-[14px] py-3">
-            <div className="flex gap-4">
-              <div className="flex items-center">
-                <input
-                  id="pending"
-                  name="status"
-                  type="radio"
-                  value="pending"
-                  className="h-4 w-4 cursor-pointer border-gray-300 bg-gray-100 text-gray-600 focus:ring-2"
-                />
-                <label
-                  htmlFor="pending"
-                  className="ml-2 flex cursor-pointer items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600"
-                >
-                  Pending <ClockIcon className="h-4 w-4" />
-                </label>
-              </div>
-              <div className="flex items-center">
-                <input
-                  id="paid"
-                  name="status"
-                  type="radio"
-                  value="paid"
-                  className="h-4 w-4 cursor-pointer border-gray-300 bg-gray-100 text-gray-600 focus:ring-2"
-                />
-                <label
-                  htmlFor="paid"
-                  className="ml-2 flex cursor-pointer items-center gap-1.5 rounded-full bg-green-500 px-3 py-1.5 text-xs font-medium text-white"
-                >
-                  Paid <CheckIcon className="h-4 w-4" />
-                </label>
-              </div>
-            </div>
-          </div>
-        </fieldset>
-      </div>
-      <div className="mt-6 flex justify-end gap-4">
-        <Link
-          href="/dashboard/invoices"
-          className="flex h-10 items-center rounded-lg bg-gray-100 px-4 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-200"
-        >
-          Cancel
-        </Link>
-        <Button type="submit">Create Invoice</Button>
-      </div>
-    </form>
-      );
-    }
+        {/* --------------------------- Customer ---------------------------- */}
+        <div>
+          <label
+              htmlFor="customer"
+              className="block text-sm font-medium leading-6 text-gray-900"
+          >
+            Customer
+          </label>
+          <select
+              id="customer"
+              name="customerId"
+              defaultValue=""
+              aria-describedby="customer-error"
+              className={clsx(
+                  'mt-2 block w-full rounded-md border-0 py-1.5 ring-1 ring-inset ring-gray-300 bg-white',
+                  state.errors?.customerId && 'ring-red-500',
+              )}
+          >
+            <option value="" disabled>
+              Select a customer
+            </option>
+            {customers.map(({ id, name }) => (
+                <option key={id} value={id}>
+                  {name}
+                </option>
+            ))}
+          </select>
+          {state.errors?.customerId?.[0] && (
+              <p
+                  id="customer-error"
+                  role="alert"
+                  aria-live="polite"
+                  className="mt-2 text-sm text-red-600"
+              >
+                {state.errors.customerId[0]}
+              </p>
+          )}
+        </div>
 
+        {/* ----------------------------- Status ---------------------------- */}
+        <fieldset>
+          <legend className="block text-sm font-medium leading-6 text-gray-900">
+            Status
+          </legend>
+          <div className="mt-2 flex gap-6">
+            <label className="flex items-center gap-2">
+              <input
+                  type="radio"
+                  name="status"
+                  value="pending"
+                  defaultChecked
+                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500"
+              />
+              <span>Pending</span>
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                  type="radio"
+                  name="status"
+                  value="paid"
+                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500"
+              />
+              <span>Paid</span>
+            </label>
+          </div>
+          {state.errors?.status?.[0] && (
+              <p
+                  id="status-error"
+                  role="alert"
+                  aria-live="polite"
+                  className="mt-2 text-sm text-red-600"
+              >
+                {state.errors.status[0]}
+              </p>
+          )}
+        </fieldset>
+
+        {/* -------------------- Form-level message -------------------------- */}
+        {state.message && (
+            <p role="alert" aria-live="assertive" className="text-sm text-red-600">
+              {state.message}
+            </p>
+        )}
+
+        {/* ------------------------- Actions ------------------------------- */}
+        <div className="flex items-center gap-4">
+          <SubmitButton />
+          <Link
+              href="/dashboard/invoices"
+              className="text-sm font-semibold leading-6 text-gray-900"
+          >
+            Cancel
+          </Link>
+        </div>
+      </form>
+  );
+}
